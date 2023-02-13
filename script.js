@@ -1,4 +1,4 @@
-// START TUTORIAL AT 5:15!!!
+// START TUTORIAL AT 5:30!
 
 
 // Wait for the page to be fully loaded
@@ -10,6 +10,8 @@ window.addEventListener("load", function() {
     canvas.width = 800;
     canvas.height = 720;
     let enemies = []; // Array to store enemies
+    let score = 0; // Variable to count and display player's score
+    let gameOver = false; // Control game over
 
     // Class to handle player input
     class InputHandler {
@@ -59,6 +61,11 @@ window.addEventListener("load", function() {
             // Properties to control which frame of the sprite sheet is displayed
             this.frameX = 0;
             this.frameY = 0;
+            this.maxFrame = 8; // How many horizontal frames there are on the sprite sheet
+            this.fps = 20; // Determine how quickly animations on the sprite sheet are shifted horizontally
+            this.frameTimer = 0; // To count from 0 to frameInterval
+            this.frameInterval = 1000/this.fps; // To determine how many ms each frame lasts (1000 ms aka 1 s / 20 frames per seconed = 50 ms)
+            // Set player speed
             this.speed = 0;
             // Properties to handle jumping
             this.vy = 0; // Force to move player up
@@ -66,12 +73,55 @@ window.addEventListener("load", function() {
         }
         // Custom method with context as argument so that it knows where to draw the sprite
         draw(context) {
+            
+            // Display hit boxes
+            context.strokeStyle = "white";
+            // Rectangular
+            // context.strokeRect(this.x, this.y, this.width, this.height);
+            // Circular
+            context.beginPath();
+            context.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI * 2);
+            context.stroke();
 
+            // frameX and frameY are used to switch between animations on the sprite sheet
             context.drawImage(this.image, this.frameX * this.width, this.frameY * this.height, this.width, this.height, this.x, this.y, this.width, this.height);
         }
-        // Custom method with input (defined below) as argument to account for player input (controls)
-        update(input) {
-           
+        // Custom method with input (defined below) as argument to account for player input (controls) and deltaTime to properly display animations
+        update(input, deltaTime, enemies) {
+            
+            // COLLISION DETECTION
+
+            // Use Pithagorean theorem to detect collision between circle (see Project 4)
+            enemies.forEach(enemy => {
+                const dx = (enemy.x + enemy.width / 2) - (this.x + this.width / 2);
+                const dy = (enemy.y + enemy.height / 2) - (this.y + this.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < enemy.width / 2 + this.width / 2) {
+                    gameOver = true; // Game over if collision detected :(
+                }
+            });
+
+            // PLAYER ANIMATION
+
+            // Run the code below when frameInterval has been reached
+            if (this.frameTimer > this.frameInterval) {
+                // When all animations of the sprite sheet has been cycled
+                if (this.frameX >= this.maxFrame) {
+                    this.frameX = 0; // Count again
+                }
+                else {
+                    this.frameX++; // Otherwise keep counting
+                }
+                // Once frameInterval reached, count again
+                this.frameTimer = 0;
+            }
+            // If frameInterval not reached yes, keep counting
+            else {
+                this.frameTimer += deltaTime;
+            }
+
+            // PLAYER CONTROLS
+
             // Check if the player pressed the arrow right key
             if (input.keys.indexOf("ArrowRight") > -1) { // If the keys[] array contains "ArrowRight" (its index exists) aka arrow right key pressed
                 this.speed = 5; // Move to the right with this speed value
@@ -104,9 +154,13 @@ window.addEventListener("load", function() {
             // Make sure the player comes back to the ground once in the air
             if (this.onGround() == false) { // If player is in the air
                 this.vy += this.gravity; // Gradually add gravity to put it back on the ground
+                this.maxFrame = 5; // For jumping
+                this.frameY = 1;
             }
             else { // If player is back on the ground
                 this.vy = 0; // Stop pulling it down
+                this.maxFrame = 8; // For running animation
+                this.frameY = 0;
             }
             // Make sure the player doesn't fall through the ground after the jump
             if (this.y > this.gameHeight - this.height) { // If player's vertical position was below the ground
@@ -171,22 +225,61 @@ window.addEventListener("load", function() {
             // Properties to control which frame of the sprite sheet is displayed
             this.frameX = 0;
             this.frameY = 0;
+            this.maxFrame = 5; // Swap animation on the sprite sheet when this treshold is reached
+            this.fps = 20; // Determine how quickly animations on the sprite sheet are shifted horizontally
+            this.frameTimer = 0; // To count from 0 to frameInterval
+            this.frameInterval = 1000/this.fps; // To determine how many ms each frame lasts (1000 ms aka 1 s / 20 frames per seconed = 50 ms)
             // Set enemy speed
             this.speed = 8; // Could be randomized
+            // To delete unused enemies (off screen)
+            this.markedForDeletion = false;
         }
         // Custom method with context as argument so that it knows where to draw the enemy
         draw(context) {
-            // frameX and frameY would be useful if the sprite sheet had more than one animation frame
+
+            // Display hit boxes
+            context.strokeStyle = "white";
+            // Rectangular
+            // context.strokeRect(this.x, this.y, this.width, this.height);
+            // Circular
+            context.beginPath();
+            context.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI * 2);
+            context.stroke();
+            
+            // frameX and frameY are used to switch between animations on the sprite sheet
             context.drawImage(this.image, this.frameX * this.width, this.frameY * this.height, this.width, this.height, this.x, this.y, this.width, this.height);
         }
         // Custom method to make the enemy move from right to left
-        update() {
+        update(deltaTime) {
+            // Run the code below to switch animations only once every frameInterval aka 50 ms
+            if (this.frameTimer > this.frameInterval) {
+                // Block below cycles between 0 and 5 aka maxFrame
+                if (this.frameX >= this.maxFrame) {
+                    this.frameX = 0;
+                }
+                else {
+                    this.frameX++;
+                }
+                // Reset frameTimer when code above has been run
+                this.frameTimer = 0;
+            }
+            // Keep increasing the timer by deltaTime until the treshold of frameInterval is reached
+            else {
+                this.frameTimer += deltaTime;
+            }
             this.x -= this.speed;
+            // Checked if the enemy has moved off screen
+            if (this.x < 0 - this.width) {
+                this.markedForDeletion = true; // If so, mark it for deletion
+                score++; // Add points, since the player has successfully avoided the enemy :)
+            }
         }
     }
     
     // Function to animate and remove enemies
     function handleEnemies(deltaTime) {
+        // A variable to randomize enemy spawning
+        let randomEnemyInterval = Math.random() * 100000 + 100;
         if (enemyTimer > (enemyInterval + randomEnemyInterval)) { // Every 1000 ms (enemyInterval) + a random number
             enemies.push(new Enemy(canvas.width, canvas.height)); // Add new Enemy object to the enemies[] array
             enemyTimer = 0; // Reset the timer for the next interval
@@ -196,13 +289,43 @@ window.addEventListener("load", function() {
         }
         enemies.forEach(enemy => { // For each element of the array ("enemy" is a placeholder for each element)
             enemy.draw(context); // Display the enemy
-            enemy.update(); // Make it move
+            enemy.update(deltaTime); // Make it move
+        });
+        // The array filter() method creates a new array only with elements that pass the test provided by the function
+        enemies = enemies.filter(function(enemy) {
+            // Include in the array only enemies not marked for deletion
+            if (enemy.markedForDeletion == false) {
+                return enemy;
+            }
+            else {
+                return null;
+            }
         });
     }
 
     // Function to display score, etc.
-    function displayStatus() {
+    function displayStatus(context) {
+        context.fillStyle = "black"; // Text color
+        context.font = "40px Helvetica"; // Text size and font
+        // fillText() method expects 3 args: text to draw, coord. x, coord. y
+        context.fillText("Score: " + score, 20, 50);
+        
+        // Draw the entire text twice with a slight px offset to give it a "shadow" effect
+        context.fillStyle = "white";
+        context.font = "40px Helvetica";
+        context.fillText("Score: " + score, 22, 52);
 
+        // Display the game over message
+        if (gameOver == true) {
+            context.textAlign = "center"; // Text alignment
+            context.fillStyle = "black"; // Text color
+            context.fillText("GAME OVER", canvas.width / 2, 200); // Text to draw (in the center)
+            
+            // Draw the entire text twice with a slight px offset to give it a "shadow" effect
+            context.textAlign = "center";
+            context.fillStyle = "white";
+            context.fillText("GAME OVER", canvas.width / 2 + 2, 202);
+        }
     }
 
     // An instance of the InputHandler class to actually register user input
@@ -218,8 +341,6 @@ window.addEventListener("load", function() {
     let enemyTimer = 0;
     // A variable to control how frequently to spawn a new enemy
     let enemyInterval = 1000;
-    // A variable to randomize enemy spawning
-    let randomEnemyInterval = Math.random() * 1000 + 500;
 
     // Main animation loop
     function animate(timeStamp) { // Pass timeStamp as an argument
@@ -227,15 +348,18 @@ window.addEventListener("load", function() {
         // deltaTime keeps track of how many miliseconds the machine needs for one frame
         // timeStamp of the current loop in auto-generated by requestAnimationFrame
         // lasTime is the timeStamp from the previous loop
-        const deltaTime = timeStamp - lastTime;
+        const deltaTime = timeStamp - lastTime; // Keep track how many ms pass between each function call/loop
         lastTime = timeStamp; // Save the current timeStamp for the next loop
         context.clearRect(0, 0, canvas.width, canvas.height);
         background.draw(context); // Display the background
         background.update(); // Make it move
         player.draw(context); // Display the player character
-        player.update(input); // Make it move
+        player.update(input, deltaTime, enemies); // Make it move
         handleEnemies(deltaTime); // Display and move enemies using deltaTime
-        requestAnimationFrame(animate); // Call the function recursively
+        displayStatus(context); // Display the score
+        if (gameOver == false) {
+            requestAnimationFrame(animate); // Call the function recursively
+        }
     }
     animate(0); // For the first iteration there is no timeStamp, but it needs some argument, e.g. 0
 });
