@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=egde">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Simple side-scroller game</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <canvas id="canvas1"></canvas>
+        <!-- All assets are stored here -->
+        <img id="player" src="resources/wizard.png">
+        <img id="background" src="resources/Battleground4.png">
+        <img id="enemy" src="resources/dragon.png">
+        <!-- Button to start the game -->
+        <button id="start">Start game</button>
+        <!-- An invisible form to store player's score -->
+        <input id="player-points" name="player-points" type="text" value="0">
+        <button type="submit">Save score</button>
+        <script src="script.js"></script>
+    </body>
+</html>
